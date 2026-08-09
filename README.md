@@ -8,7 +8,7 @@
 
 ## 구조
 
-브라우저가 보낸 좌표·텍스트가 중계 서버(`8080`)를 거쳐 TouchDesigner로 전달됩니다.
+<img src="./images/pipeline.svg" alt="브라우저가 터치 좌표와 텍스트를 WebSocket 중계 서버 8080 포트로 보내고 TouchDesigner가 받아 매핑하는 흐름" width="880">
 
 한 포트에 양쪽이 접속하고, 서버는 받은 메시지를 보낸 쪽을 제외한 모든 접속자에게 전달합니다. 역할을 구분하지 않으므로 TouchDesigner도 브라우저와 같은 주소를 씁니다.
 

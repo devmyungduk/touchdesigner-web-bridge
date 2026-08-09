@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="150" viewBox="0 0 880 150" role="img" aria-labelledby="title desc" text-rendering="geometricPrecision">
+  <title id="title">브라우저에서 TouchDesigner로 향하는 데이터 흐름</title>
+  <desc id="desc">브라우저가 터치 좌표와 텍스트를 WebSocket 중계 서버 8080 포트로 보내고, 서버가 보낸 쪽을 제외한 접속자에게 전달해 TouchDesigner가 값을 매핑합니다.</desc>
+  <defs>
+    <style>
+      .ui { font-family: Pretendard, "Noto Sans KR", "Segoe UI", Arial, sans-serif; }
+      .box { fill: #151e2d; stroke: #334155; stroke-width: 1.5; }
+      .name { fill: #f8fafc; font-size: 16px; font-weight: 700; }
+      .sub { fill: #94a3b8; font-size: 12px; }
+      .wire { fill: none; stroke: #64B5F6; stroke-width: 3; stroke-linecap: round; }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#64B5F6"/>
+    </marker>
+  </defs>
+
+  <rect width="880" height="150" rx="16" fill="#0b1220"/>
+
+  <g class="ui">
+    <g>
+      <rect class="box" x="24" y="38" width="220" height="74" rx="12"/>
+      <text class="name" x="134" y="70" text-anchor="middle">브라우저</text>
+      <text class="sub" x="134" y="92" text-anchor="middle">터치 좌표 · 텍스트</text>
+    </g>
+
+    <path class="wire" d="M254 75 H322" marker-end="url(#arrow)"/>
+
+    <g>
+      <rect class="box" x="332" y="38" width="216" height="74" rx="12"/>
+      <text class="name" x="440" y="70" text-anchor="middle">WebSocket 중계 서버</text>
+      <text class="sub" x="440" y="92" text-anchor="middle">포트 8080</text>
+    </g>
+
+    <path class="wire" d="M558 75 H626" marker-end="url(#arrow)"/>
+
+    <g>
+      <rect class="box" x="636" y="38" width="220" height="74" rx="12"/>
+      <text class="name" x="746" y="70" text-anchor="middle">TouchDesigner</text>
+      <text class="sub" x="746" y="92" text-anchor="middle">매핑 · 렌더링</text>
+    </g>
+  </g>
+</svg>
