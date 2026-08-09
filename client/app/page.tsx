@@ -2,178 +2,146 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+type Payload =
+  | { type: 'click'; x: number; y: number; time: string }
+  | { type: 'text'; content: string; time: string };
+
+type LogEntry = { id: string; label: string };
+
+// 접속한 호스트를 그대로 쓴다. 휴대기기에서 PC 주소로 열면
+// 그 주소로 WebSocket 이 연결되므로 코드를 고칠 필요가 없다.
+function resolveWsUrl(): string {
+  const configured = process.env.NEXT_PUBLIC_WS_URL;
+  if (configured) return configured;
+
+  const port = process.env.NEXT_PUBLIC_WS_PORT ?? '8080';
+  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  return `${protocol}://${window.location.hostname}:${port}`;
+}
+
+const MAX_LOG = 50;
+
 export default function Home() {
-  const ws = useRef(null);
+  const socketRef = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
-  const [log, setLog] = useState([]);
+  const [log, setLog] = useState<LogEntry[]>([]);
   const [text, setText] = useState('');
 
   useEffect(() => {
-    ws.current = new WebSocket('ws://localhost:8080');
+    const socket = new WebSocket(resolveWsUrl());
+    socketRef.current = socket;
 
-    ws.current.onopen = () => {
-      console.log('연결 성공');
-      setConnected(true);
+    socket.onopen = () => setConnected(true);
+    socket.onclose = () => setConnected(false);
+    socket.onerror = () => setConnected(false);
+
+    return () => {
+      socket.close();
+      socketRef.current = null;
     };
-
-    ws.current.onclose = () => {
-      console.log('연결 종료');
-      setConnected(false);
-    };
-
-    ws.current.onerror = (error) => {
-      console.error('오류:', error);
-    };
-
-    return () => ws.current?.close();
   }, []);
 
-  const addLog = (msg) => {
-    setLog((prev) => [msg, ...prev.slice(0, 49)]);
-  };
+  function addLog(label: string) {
+    setLog((prev) => [{ id: `${Date.now()}-${Math.random()}`, label }, ...prev].slice(0, MAX_LOG));
+  }
 
-  const handleClick = (e) => {
-    if (!ws.current || ws.current.readyState !== WebSocket.OPEN) return;
+  function send(payload: Payload): boolean {
+    const socket = socketRef.current;
+    if (socket?.readyState !== WebSocket.OPEN) return false;
+    socket.send(JSON.stringify(payload));
+    return true;
+  }
 
-    const data = {
+  function handlePointerDown(e: React.PointerEvent<HTMLElement>) {
+    // 입력창과 버튼을 누른 경우는 좌표 전송에서 제외한다.
+    if ((e.target as HTMLElement).closest('[data-no-capture]')) return;
+
+    const payload: Payload = {
       type: 'click',
-      x: e.clientX,
-      y: e.clientY,
-      time: new Date().toLocaleTimeString()
+      x: Math.round(e.clientX),
+      y: Math.round(e.clientY),
+      time: new Date().toLocaleTimeString(),
     };
 
-    ws.current.send(JSON.stringify(data));
-    addLog(`Click (${data.x}, ${data.y})`);
-  };
+    if (send(payload)) addLog(`좌표 (${payload.x}, ${payload.y})`);
+  }
 
-  const sendText = () => {
-    if (!ws.current || ws.current.readyState !== WebSocket.OPEN) return;
-    if (!text.trim()) return;
+  function handleSendText() {
+    const content = text.trim();
+    if (!content) return;
 
-    const data = {
+    const payload: Payload = {
       type: 'text',
-      content: text,
-      time: new Date().toLocaleTimeString()
+      content,
+      time: new Date().toLocaleTimeString(),
     };
 
-    ws.current.send(JSON.stringify(data));
-    addLog(`Text: ${text}`);
-    setText('');
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendText();
+    if (send(payload)) {
+      addLog(`텍스트 ${content}`);
+      setText('');
     }
-  };
+  }
 
   return (
     <main
-      style={{
-        minHeight: '100vh',
-        background: '#1a1a2e',
-        color: '#eee',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px'
-      }}
-      onClick={handleClick}
+      onPointerDown={handlePointerDown}
+      className="min-h-screen flex flex-col items-center justify-center gap-8 p-5
+                 bg-[#1a1a2e] text-[#eee] touch-none select-none"
     >
       <div
-        style={{
-          position: 'fixed',
-          top: '20px',
-          right: '20px',
-          padding: '10px 20px',
-          background: connected ? '#0f0' : '#f00',
-          color: '#000',
-          borderRadius: '5px',
-          fontWeight: 'bold'
-        }}
+        className={`fixed top-5 right-5 rounded px-4 py-2 text-sm font-bold text-black ${
+          connected ? 'bg-emerald-400' : 'bg-rose-400'
+        }`}
       >
         {connected ? '연결됨' : '연결 끊김'}
       </div>
 
-      <h1 style={{ fontSize: '2.5rem', marginBottom: '20px' }}>
-        WebSocket 테스트
-      </h1>
+      <header className="text-center">
+        <h1 className="text-3xl sm:text-4xl font-bold">TouchDesigner Web Bridge</h1>
+        <p className="mt-2 text-sm opacity-70">화면을 누르면 좌표를, 아래 입력창으로 텍스트를 보냅니다.</p>
+      </header>
 
-      <div
-        style={{
-          display: 'flex',
-          gap: '10px',
-          marginBottom: '30px',
-          width: '80%',
-          maxWidth: '600px'
-        }}
-      >
+      <div data-no-capture className="flex w-4/5 max-w-xl gap-2">
         <input
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="텍스트 입력 (Enter로 전송)"
-          style={{
-            flex: 1,
-            padding: '10px',
-            background: '#0f0f23',
-            border: '1px solid #333',
-            borderRadius: '5px',
-            color: '#eee',
-            fontSize: '16px'
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSendText();
+            }
           }}
+          placeholder="텍스트 입력 (Enter 로 전송)"
+          className="flex-1 rounded border border-[#333] bg-[#0f0f23] px-3 py-2 text-base
+                     text-[#eee] outline-none focus:border-emerald-400"
         />
         <button
-          onClick={sendText}
-          style={{
-            padding: '10px 20px',
-            background: '#0f0',
-            color: '#000',
-            border: 'none',
-            borderRadius: '5px',
-            cursor: 'pointer',
-            fontWeight: 'bold'
-          }}
+          onClick={handleSendText}
+          className="rounded bg-emerald-400 px-5 py-2 font-bold text-black
+                     hover:bg-emerald-300 active:scale-95 transition"
         >
           전송
         </button>
       </div>
 
-      <div
-        style={{
-          background: '#0f0f23',
-          padding: '20px',
-          borderRadius: '10px',
-          width: '80%',
-          maxWidth: '600px',
-          maxHeight: '300px',
-          overflowY: 'auto'
-        }}
+      <section
+        data-no-capture
+        className="w-4/5 max-w-xl max-h-72 overflow-y-auto rounded-lg bg-[#0f0f23] p-5"
       >
-        <h3>전송 로그</h3>
+        <h2 className="mb-3 text-lg font-semibold">전송 로그</h2>
         {log.length === 0 ? (
-          <p style={{ opacity: 0.5 }}>전송 데이터가 없습니다.</p>
+          <p className="opacity-50">전송한 데이터가 없습니다.</p>
         ) : (
-          <ul style={{ listStyle: 'none', padding: 0 }}>
-            {log.map((item, i) => (
-              <li
-                key={i}
-                style={{
-                  padding: '5px 10px',
-                  background: '#16213e',
-                  marginBottom: '5px',
-                  borderRadius: '3px'
-                }}
-              >
-                {item}
+          <ul className="space-y-1">
+            {log.map((entry) => (
+              <li key={entry.id} className="rounded bg-[#16213e] px-3 py-1.5 text-sm">
+                {entry.label}
               </li>
             ))}
           </ul>
         )}
-      </div>
+      </section>
     </main>
   );
 }

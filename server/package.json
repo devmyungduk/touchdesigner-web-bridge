@@ -1,15 +1,14 @@
 {
-  "name": "data_pipeline",
+  "name": "server",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "private": true,
+  "description": "브라우저와 TouchDesigner 를 중계하는 WebSocket 서버",
+  "main": "server.js",
   "type": "commonjs",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
   "dependencies": {
     "ws": "^8.18.3"
   }

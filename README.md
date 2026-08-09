@@ -1,363 +1,126 @@
-[English](./README.en.md) | [한국어](./README.md)
+# TouchDesigner Web Bridge
 
-# 🪟 Windows WebSocket 파이프라인 실행 가이드
-![Node.js](https://img.shields.io/badge/Node.js-20.x-339933?logo=nodedotjs&logoColor=white)
-![Next.js](https://img.shields.io/badge/Next.js-16.0-000000?logo=nextdotjs&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript&logoColor=white)
-![WebSocket](https://img.shields.io/badge/WebSocket-ws-010101?logo=socket.io&logoColor=white)
-![Platform](https://img.shields.io/badge/Platform-Windows_10/11-0078D6?logo=windows&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-green)
-> **Next.js → Node.js → TouchDesigner**  
-> Windows 10/11 | 초보자용 | 2025년 11월
+> 휴대기기 브라우저의 터치 좌표와 텍스트 입력을 WebSocket으로 TouchDesigner에 전달합니다. 받은 값을 TouchDesigner에서 매핑해 비주얼과 인터랙션을 구성합니다.
 
----
+<img src="./images/client-screenshot.png" alt="연결 상태와 입력창, 전송 로그가 보이는 웹 클라이언트 화면" width="720">
 
-## ✅ 시작 전 확인
+브라우저는 **입력 장치**입니다. 화면을 누르면 좌표를, 입력창으로 텍스트를 보냅니다. 결과물은 TouchDesigner에서 만듭니다.
 
-```
-□ Windows 10 이상
-□ Node.js 20.x 이상 설치 필요
-□ TouchDesigner 2023.10+ 설치 필요
+## 구조
+
+```mermaid
+flowchart LR
+  B["브라우저<br/>터치 좌표 · 텍스트"] --> S["WebSocket 중계 서버<br/>8080"]
+  S --> T["TouchDesigner<br/>매핑 · 렌더링"]
 ```
 
----
+한 포트에 양쪽이 접속하고, 서버는 받은 메시지를 보낸 쪽을 제외한 모든 접속자에게 전달합니다. 역할을 구분하지 않으므로 TouchDesigner도 브라우저와 같은 주소를 씁니다.
 
-## 📥 1. 프로젝트 다운로드
+중계 자체는 양방향이지만, 이 저장소의 브라우저 화면은 보내는 쪽만 구현했습니다. 반대 방향은 [td-web-interaction](https://github.com/devmyungduk/td-web-interaction)에서 다루고, 포트와 메시지 형식이 같아 두 저장소의 중계 서버를 서로 바꿔 쓸 수 있습니다.
 
-### 방법 1: Git Clone (추천)
-```cmd
-C:\> git clone https://github.com/devmyungduk/websocket-pipeline.git
-C:\> cd websocket-pipeline
+## 실행
+
+Node.js 22 이상이 필요합니다. 없으면 [nodejs.org](https://nodejs.org/)에서 설치합니다.
+
+```bash
+git clone https://github.com/devmyungduk/touchdesigner-web-bridge.git
+cd touchdesigner-web-bridge
+npm install
+npm run dev
 ```
 
-### 방법 2: ZIP 다운로드
-1. https://github.com/devmyungduk/websocket-pipeline
-2. 녹색 'Code' 버튼 클릭
-3. 'Download ZIP' 선택
-4. 압축 해제 → `C:\websocket-pipeline\`
+`npm install` 한 번으로 클라이언트와 서버 의존성이 함께 설치되고, `npm run dev` 한 명령으로 둘 다 실행됩니다.
 
----
-
-## 🔧 2. Node.js 설치 (처음 한 번만)
-
-### 2.1 다운로드
-- https://nodejs.org
-- "20.x LTS (Recommended)" 다운로드
-
-### 2.2 설치 확인
-```cmd
-C:\> node --version
-v22.11.0
-
-C:\> npm --version
-10.8.2
-```
-
----
-
-## 📦 3. 패키지 설치
-
-### 3.1 WebSocket 서버 설치
-
-**CMD 창 열기 → server 폴더 이동**
-
-```cmd
-C:\> cd websocket-pipeline\server
-C:\websocket-pipeline\server> npm install
-```
-
-**성공 출력:**
-```
-added 1 package, and audited 2 packages in 2s
-found 0 vulnerabilities
-```
-
-### 3.2 Next.js 클라이언트 설치
-
-**새 CMD 창 열기 → client 폴더 이동**
-
-```cmd
-C:\> cd websocket-pipeline\client
-C:\websocket-pipeline\client> npm install
-```
-
-**성공 출력:**
-```
-added XXX packages in XXs
-```
-
----
-
-## 🚀 4. 실행 순서
-
-### ✅ 실행 전 체크리스트
+서버가 뜨면 접속 주소가 출력됩니다.
 
 ```
-□ Node.js 설치 완료
-□ server 폴더에서 npm install 완료
-□ client 폴더에서 npm install 완료
+WebSocket 서버: ws://localhost:8080
+같은 네트워크에서 접속할 주소:
+  ws://192.168.0.10:8080   (웹 화면은 http://192.168.0.10:3000)
 ```
 
----
+PC에서는 `http://localhost:3000`을 엽니다. 오른쪽 위 표시가 `연결됨`이면 준비된 상태입니다.
 
-### 4.1 WebSocket 서버 실행 [CMD #1]
+따로 실행하려면 `npm run dev:client`와 `npm run dev:server`를 씁니다.
 
-**위치:** `C:\websocket-pipeline\server`
+## 휴대기기에서 접속
 
-```cmd
-C:\websocket-pipeline\server> node server.js
-```
+터미널에 출력된 `http://<주소>:3000`을 같은 공유기에 연결된 휴대기기에서 엽니다. 클라이언트가 **접속한 호스트로 WebSocket을 연결**하므로 코드나 설정을 고칠 필요가 없습니다.
 
-**성공 출력:**
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-WebSocket 서버 시작
-주소: ws://localhost:8080
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+연결되지 않으면 확인할 것이 두 가지입니다.
 
-> ⚠️ **이 창을 닫지 마세요!** 서버가 계속 실행되어야 합니다.
+- PC와 휴대기기가 같은 네트워크에 있는지
+- Windows 방화벽이 Node.js의 인바운드 연결을 허용하는지 (`3000`, `8080`)
 
----
+## TouchDesigner 연결
 
-### 4.2 Next.js 클라이언트 실행 [CMD #2]
+[TouchDesigner](https://derivative.ca/download)는 비상업 용도 무료 버전이 있습니다.
 
-**새 CMD 창 열기**
+1. **WebSocket DAT**를 추가합니다.
+2. `Network Address`를 `localhost`, `Network Port`를 `8080`으로 설정합니다.
+3. `Active`를 켭니다.
 
-**위치:** `C:\websocket-pipeline\client`
-
-```cmd
-C:\websocket-pipeline\client> npm run dev
-```
-
-**성공 출력:**
-```
-  ▲ Next.js 16.0.1 (Turbopack)
-  - Local:        http://localhost:3000
-  - Network:      http://172.30.1.79:3000
-
- ✓ Starting...
- ✓ Ready in 2s
-```
-
----
-
-### 4.3 브라우저 테스트
-
-1. **브라우저 열기:** http://localhost:3000
-2. **연결 확인:** 우측 상단 녹색 "연결됨" 표시
-3. **테스트:**
-   - 화면 클릭 → 전송 로그 확인
-   - 키보드 입력 → 전송 로그 확인
-
-**클라이언트 화면:**
-
-<img src="./images/client-screenshot.png" width="800">
-
-
-## 🎨 5. TouchDesigner 연결
-
-### 5.1 WebSocket DAT 추가
-
-1. TouchDesigner 실행
-2. 빈 공간 우클릭
-3. **Add Operator → DAT → WebSocket**
-
-### 5.2 Parameters 설정
-
-| Parameter | 값 |
-|-----------|-----|
-| **Active** | ✅ ON |
-| **Network Address** | `localhost` |
-| **Network Port** | `8080` |
-| **Auto Reconnect** | ✅ ON |
-
-> ⚠️ **중요:** Network Address에 `ws://` 또는 포트 번호 포함하지 않습니다!
-> 
-> ❌ 잘못된 예: `ws://localhost:8080`  
-> ✅ 올바른 예: `localhost` (포트는 별도 입력)
-
-### 5.3 데이터 확인
-
-**WebSocket DAT 더블클릭:**
+브라우저가 보내는 값은 WebSocket DAT의 콜백 DAT(`onReceiveText`)로 들어옵니다.
 
 ```json
-{"type":"click","x":512,"y":384,"time":"15:30:45"}
-{"type":"keydown","key":"a","time":"15:30:50"}
+{ "type": "click", "x": 512, "y": 300, "time": "14:23:05" }
+{ "type": "text",  "content": "입력한 문자열", "time": "14:23:11" }
 ```
 
----
+콜백에서 파싱해 원하는 파라미터에 연결합니다.
 
-## 📂 프로젝트 구조
+```python
+import json
 
-```
-C:\websocket-pipeline\
-│
-├── 📄 .gitignore              ← Git 제외 파일
-├── 📄 README.md               ← 이 파일
-│
-├── 📁 server\                 ← WebSocket 서버
-│   ├── 📄 server.js
-│   ├── 📄 package.json
-│   └── 📁 node_modules\       ← npm install 시 자동생성
-│
-└── 📁 client\                 ← Next.js 클라이언트 (TypeScript)
-    ├── 📁 .next\              ← npm run dev 시 자동생성
-    ├── 📁 app\
-    │   ├── 📄 page.tsx        ← WebSocket 송신 코드
-    │   ├── 📄 layout.tsx
-    │   ├── 📄 globals.css
-    │   └── 📄 favicon.ico
-    │
-    ├── 📁 node_modules\       ← npm install 시 자동생성
-    ├── 📁 public\
-    │   └── *.svg
-    │
-    ├── 📄 .gitignore
-    ├── 📄 eslint.config.mjs
-    ├── 📄 next.config.ts
-    ├── 📄 next-env.d.ts       ← Next.js 실행 시 자동생성
-    ├── 📄 package.json
-    ├── 📄 postcss.config.mjs
-    └── 📄 tsconfig.json
+def onReceiveText(dat, rowIndex, message, bytes):
+    data = json.loads(message)
+    if data['type'] == 'click':
+        op('constant1').par.value0 = data['x']
+        op('constant1').par.value1 = data['y']
+    elif data['type'] == 'text':
+        op('text1').par.text = data['content']
+    return
 ```
 
-**주요 코드 파일:**
-- [`server/server.js`](./server/server.js) - WebSocket 서버
-- [`client/app/page.tsx`](./client/app/page.tsx) - Next.js 클라이언트
+여기서부터는 TouchDesigner 작업입니다. 받은 좌표를 파티클 위치나 노이즈 시드로 쓰고, 텍스트를 Text TOP에 넣는 방식으로 확장합니다.
 
----
-
-## ❌ 오류 해결
-
-### "Cannot find module 'ws'"
-
-**원인:** server 폴더에서 npm install 안 함
-
-**해결:**
-```cmd
-C:\websocket-pipeline\server> npm install
-```
-
----
-
-### "EADDRINUSE" (포트 사용 중)
-
-**해결 1: 실행 중인 프로세스 종료**
-```cmd
-C:\> netstat -ano | findstr :8080
-  TCP    0.0.0.0:8080    LISTENING    1234
-
-C:\> taskkill /PID 1234 /F
-```
-
-**해결 2: 다른 포트 사용**
-1. `server/server.js` 수정:
-   ```javascript
-   const server = new WebSocket.Server({ port: 8081 });
-   ```
-2. `client/app/page.tsx` 수정:
-   ```javascript
-   new WebSocket('ws://localhost:8081');
-   ```
-3. TouchDesigner 포트 변경: `8081`
-
----
-
-### TouchDesigner 연결 실패
-
-**체크리스트:**
-```
-□ [CMD #1] server.js 실행 중?
-□ Active 파라미터 ON?
-□ Network Address: localhost (ws:// 없이)
-□ Network Port: 8080
-□ 방화벽 차단 확인
-```
-
-**방화벽 해제 (관리자 CMD):**
-```cmd
-netsh advfirewall firewall add rule name="WebSocket" dir=in action=allow protocol=TCP localport=8080
-```
-
----
-
-## 🔄 실행 흐름도
+## 구성
 
 ```
-[CMD #1] node server.js
-    ↓
-WebSocket 서버 시작 (포트 8080)
-    ↓
-[CMD #2] npm run dev
-    ↓
-Next.js 시작 (포트 3000)
-    ↓
-브라우저: http://localhost:3000
-    ↓
-클릭/키 입력 → WebSocket 전송
-    ↓
-TouchDesigner: WebSocket DAT에서 수신
+package.json          루트. workspaces 로 client·server 를 함께 관리
+client/
+  app/page.tsx        입력 화면. 좌표·텍스트 전송과 전송 로그
+  app/layout.tsx      폰트와 메타데이터
+server/
+  server.js           중계 서버
+images/               스크린샷
 ```
 
----
+Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · ws
 
-## 🛑 종료 방법
+## 설정
 
-1. **브라우저 닫기**
-2. **[CMD #2]** `Ctrl + C` (Next.js 종료)
-3. **[CMD #1]** `Ctrl + C` (서버 종료)
+| 환경변수 | 기본값 | 용도 |
+|---|---|---|
+| `WS_PORT` | `8080` | 중계 서버가 열 포트 |
+| `WS_VERBOSE` | 미설정 | `1`이면 중계한 메시지를 콘솔에 출력 |
+| `NEXT_PUBLIC_WS_PORT` | `8080` | 브라우저가 접속할 포트 |
+| `NEXT_PUBLIC_WS_URL` | 미설정 | 접속 주소를 직접 지정할 때. 설정하면 호스트 자동 감지를 대신합니다 |
 
----
+포트를 바꾸려면 `WS_PORT`와 `NEXT_PUBLIC_WS_PORT`를 같은 값으로 맞춥니다.
 
-## 📚 개발 문서
+## 문제 해결
 
-- **[Next.js fetch() 완벽 가이드](./docs/nextjs-fetch-guide.md)**  
-  서버/클라이언트 컴포넌트, async/await, 캐싱 전략, 에러 처리
+| 증상 | 확인 |
+|---|---|
+| `연결 끊김`이 계속 표시됨 | 서버가 실행 중인지, 포트가 같은지 확인 |
+| `EADDRINUSE` | 다른 프로세스가 `8080`을 쓰고 있음. `WS_PORT`를 바꾸거나 해당 프로세스를 종료 |
+| 휴대기기에서 화면이 안 열림 | 같은 네트워크인지, 방화벽이 `3000`·`8080`을 막지 않는지 확인 |
+| TouchDesigner가 값을 못 받음 | `WS_VERBOSE=1`로 서버를 띄워 중계가 일어나는지 확인. 서버까지 왔는지 TD에서 막혔는지 구분됨 |
+| `Cannot find module 'ws'` | 루트에서 `npm install`을 실행했는지 확인 |
 
----
+## 라이선스
 
-## 📚 추가 리소스
+이용 조건은 [LICENSE](LICENSE)를 확인하세요.
 
-| 항목 | URL |
-| --- | --- |
-| Node.js | https://nodejs.org/docs |
-| Next.js | https://nextjs.org/docs |
-| TouchDesigner | https://docs.derivative.ca |
-| WebSocket (ws) | https://www.npmjs.com/package/ws |
-| TypeScript | https://www.typescriptlang.org/docs |
-
----
-
-## ✅ 빠른 시작 요약
-
-```cmd
-# 1. 프로젝트 다운로드
-git clone https://github.com/devmyungduk/websocket-pipeline.git
-cd websocket-pipeline
-
-# 2. 패키지 설치
-cd server
-npm install
-cd ..\client
-npm install
-
-# 3. 실행
-# CMD #1
-cd ..\server
-node server.js
-
-# CMD #2 (새 창)
-cd websocket-pipeline\client
-npm run dev
-
-# 4. 브라우저: http://localhost:3000
-# 5. TouchDesigner: WebSocket DAT 설정
-```
-
----
-
-**작성일:** 2025년 11월  
-**환경:** Windows 10/11 검증 완료  
-**기술 스택:** Node.js + Next.js 16 (TypeScript) + TouchDesigner  
-**최종 업데이트:** 2025-11-05 (프로젝트 구조 개선)
+질문과 오류 제보는 Issues를 이용해 주세요.

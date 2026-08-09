@@ -1,57 +1,70 @@
-const WebSocket = require('ws');
+// 브라우저와 TouchDesigner 를 중계하는 WebSocket 서버.
+//
+// 한 포트에 양쪽이 접속하고, 받은 메시지를 보낸 쪽을 제외한 모든
+// 접속자에게 그대로 전달한다. 역할 구분이 필요 없어 TouchDesigner 도
+// 브라우저와 같은 주소를 쓴다.
 
-const server = new WebSocket.Server({ port: 8080 });
+const os = require('os');
+const { WebSocketServer, OPEN } = require('ws');
 
-let clientCount = 0;  // 추가: 클라이언트 수 추적
+const PORT = Number(process.env.WS_PORT ?? 8080);
+const VERBOSE = process.env.WS_VERBOSE === '1';
 
-console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-console.log('WebSocket 서버 시작');
-console.log('주소: ws://localhost:8080');
-console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+// 같은 공유기에 있는 휴대기기가 접속할 수 있는 주소를 찾는다.
+function lanAddresses() {
+  return Object.values(os.networkInterfaces())
+    .flat()
+    .filter((net) => net && net.family === 'IPv4' && !net.internal)
+    .map((net) => net.address);
+}
 
-server.on('connection', (ws) => {
-  clientCount++;  // 추가: 연결 시 카운트 증가
-  console.log(`클라이언트 연결됨 (총 ${clientCount}개)`);  // 수정: 연결 수 표시
-  
-  ws.on('message', (message) => {
-    const data = message.toString();
-    console.log('수신:', data);
-    
-    // 추가: JSON 파싱 시도
-    let parsedData;
-    try {
-      parsedData = JSON.parse(data);
-      console.log('파싱 성공:', parsedData.type);
-    } catch (e) {
-      console.log('파싱 실패: 원본 문자열 사용');
+const wss = new WebSocketServer({ port: PORT });
+
+wss.on('listening', () => {
+  console.log(`WebSocket 서버: ws://localhost:${PORT}`);
+  const addresses = lanAddresses();
+  if (addresses.length > 0) {
+    console.log('같은 네트워크에서 접속할 주소:');
+    for (const address of addresses) {
+      console.log(`  ws://${address}:${PORT}   (웹 화면은 http://${address}:3000)`);
     }
-    
-    // 수정: 송신자 제외 브로드캐스트
-    server.clients.forEach((client) => {
-      if (client !== ws && client.readyState === WebSocket.OPEN) {  // 수정: client !== ws 조건 추가
+  }
+});
+
+wss.on('connection', (socket) => {
+  console.log(`접속. 현재 ${wss.clients.size}개`);
+
+  socket.on('message', (raw) => {
+    const message = raw.toString();
+    let relayed = 0;
+
+    for (const client of wss.clients) {
+      if (client !== socket && client.readyState === OPEN) {
         client.send(message);
+        relayed += 1;
       }
-    });
+    }
+
+    if (VERBOSE) {
+      console.log(`중계 ${relayed}건: ${message}`);
+    }
   });
-  
-  // 추가: 에러 핸들러
-  ws.on('error', (error) => {
-    console.error('WebSocket 오류:', error.message);
+
+  socket.on('error', (error) => {
+    console.error('소켓 오류:', error.message);
   });
-  
-  ws.on('close', () => {
-    clientCount--;  // 추가: 종료 시 카운트 감소
-    console.log(`클라이언트 연결 종료 (총 ${clientCount}개)`);  // 수정: 연결 수 표시
+
+  socket.on('close', () => {
+    console.log(`종료. 남은 ${wss.clients.size}개`);
   });
 });
 
-// 추가: 서버 에러 핸들러
-server.on('error', (error) => {
+wss.on('error', (error) => {
   console.error('서버 오류:', error.message);
+  process.exit(1);
 });
 
 process.on('SIGINT', () => {
   console.log('\n서버 종료');
-  server.close();
-  process.exit(0);
+  wss.close(() => process.exit(0));
 });
