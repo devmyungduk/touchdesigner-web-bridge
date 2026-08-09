@@ -88,11 +88,11 @@ def onReceiveText(dat, rowIndex, message):
 
 | 경로 | 내용 |
 |---|---|
-| `client/app/page.tsx` | 입력 화면. 터치 좌표와 텍스트 전송, 전송 기록 표시 |
+| `client/app/page.tsx` | 입력 화면과 전송 기록 |
 | `client/app/layout.tsx` | 폰트와 메타데이터 |
 | `server/server.js` | 중계 서버 |
-| `package.json` | 루트. `workspaces` 설정과 실행 스크립트 |
-| `images/` | 스크린샷과 구조 도식 |
+| `package.json` | `workspaces` 설정과 실행 스크립트 |
+| `images/` | 스크린샷과 도식 |
 
 Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · ws
 
@@ -100,10 +100,10 @@ Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · ws
 
 | 환경변수 | 기본값 | 용도 |
 |---|---|---|
-| `WS_PORT` | `8080` | 중계 서버가 열 포트 |
-| `WS_VERBOSE` | 미설정 | `1`이면 중계한 메시지를 콘솔에 출력 |
+| `WS_PORT` | `8080` | 서버가 열 포트 |
+| `WS_VERBOSE` | 미설정 | `1`이면 중계 내역을 콘솔에 출력 |
 | `NEXT_PUBLIC_WS_PORT` | `8080` | 브라우저가 접속할 포트 |
-| `NEXT_PUBLIC_WS_URL` | 미설정 | 접속 주소를 직접 지정. 호스트 자동 감지를 대신함 |
+| `NEXT_PUBLIC_WS_URL` | 미설정 | 접속 주소 직접 지정 |
 
 포트를 바꾸려면 `WS_PORT`와 `NEXT_PUBLIC_WS_PORT`를 같은 값으로 맞춥니다.
 
@@ -111,11 +111,11 @@ Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · ws
 
 | 증상 | 확인 |
 |---|---|
-| `연결 끊김`이 계속 표시됨 | 서버가 실행 중인지, 포트가 같은지 확인 |
-| `EADDRINUSE` | 다른 프로세스가 `8080`을 쓰고 있음. `WS_PORT`를 바꾸거나 해당 프로세스를 종료 |
-| 휴대폰에서 화면이 안 열림 | 같은 네트워크인지, 방화벽이 `3000`·`8080`을 막지 않는지 확인 |
-| TouchDesigner가 값을 못 받음 | `WS_VERBOSE=1`로 서버를 띄워 중계가 일어나는지 확인. 서버까지 왔는지 TouchDesigner에서 막혔는지 구분됨 |
-| `Cannot find module 'ws'` | 루트에서 `npm install`을 실행했는지 확인 |
+| `연결 끊김`이 계속 표시됨 | 서버가 실행 중인지, 포트가 같은지 |
+| `EADDRINUSE` | `8080`을 쓰는 프로세스를 종료하거나 `WS_PORT` 변경 |
+| 휴대폰에서 화면이 안 열림 | 같은 네트워크인지, 방화벽이 막지 않는지 |
+| TouchDesigner가 값을 못 받음 | `WS_VERBOSE=1`로 띄워 중계가 일어나는지 |
+| `Cannot find module 'ws'` | 루트에서 `npm install`을 실행했는지 |
 
 ## 라이선스
 
